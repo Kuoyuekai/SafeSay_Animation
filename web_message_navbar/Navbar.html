@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="Navbar.css">
+</head>
+<body>
+  <nav class="navbar" id="navbar">
+    <div class="navbar-row" id="navbarRow">
+      <div class="left-group" id="leftGroup">
+        <img src="pic.svg" class="user-avatar" id="avatar" alt="User avatar"/>
+        <span class="user-name" id="userName">Annette Black</span>
+      </div>
+      <div class="center-spacer"></div>
+      <div class="right">
+        <img src="phone.svg"  class="icon phone"  alt="Phone">
+        <img src="list.svg"   class="icon list"   id="toggleList" alt="List">
+        <img src="search.svg" class="icon search" alt="Search">        
+      </div>
+    </div>
+  </nav>
+  <script>
+    const navbar = document.getElementById('navbar');
+const row    = document.getElementById('navbarRow');
+const nameEl = document.getElementById('userName');
+const toggle = document.getElementById('toggleList');
+
+const ICONS = { list: 'list.svg', close: 'close.svg' };
+
+function computeShift() {
+  // 確保是基準狀態：移除動畫 class、把 shift 歸 0、清掉 inline transform
+  navbar.classList.remove('expanded');
+  navbar.style.setProperty('--shift', '0px');
+  nameEl.style.removeProperty('transform');  // ← 關鍵：不要留任何 inline transform
+  void nameEl.offsetWidth;                   // 強制 reflow，之後動畫才會觸發
+
+  const rowRect  = row.getBoundingClientRect();
+  const nameRect = nameEl.getBoundingClientRect();
+  const containerCenterX = rowRect.left + rowRect.width / 2;
+  const nameCenterX      = nameRect.left + nameRect.width / 2;
+  return containerCenterX - nameCenterX;
+}
+
+function toExpanded() {
+  const dx = computeShift();
+  navbar.style.setProperty('--shift', `${dx}px`);
+  // 下一幀再加 class，確保每次都從 0 → dx 觸發動畫
+  requestAnimationFrame(() => {
+    navbar.classList.add('expanded');
+  });
+  toggle.src = ICONS.close;
+  toggle.alt = 'Close';
+}
+
+function toDefault() {
+  navbar.classList.remove('expanded');
+  navbar.style.removeProperty('--shift');
+  nameEl.style.removeProperty('transform'); // 清乾淨，避免覆蓋樣式
+  toggle.src = ICONS.list;
+  toggle.alt = 'List';
+}
+
+toggle.addEventListener('click', () => {
+  if (navbar.classList.contains('expanded')) {
+    toDefault();
+  } else {
+    toExpanded();
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (navbar.classList.contains('expanded')) {
+    const dx = computeShift();
+    navbar.style.setProperty('--shift', `${dx}px`);
+    requestAnimationFrame(() => navbar.classList.add('expanded'));
+  }
+});
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chat MVP</title>
+<link rel="stylesheet" href="Chat_Bubble.css">
+</head>
+<body>
+  <main class="chat">
+    <header class="chat__header">
+      <div class="chat__title">聊天室</div>
+    </header>
+
+    <!-- 訊息串容器：JavaScript 會把訊息泡泡 append 到這裡 -->
+    <section id="thread" class="chat__thread" aria-live="polite" aria-atomic="false"></section>
+
+    <!-- 底部輸入區 -->
+    <footer class="chat__input">
+      <input id="textbox" class="chat__textbox" placeholder="輸入訊息…（Enter 送出、Shift+Enter 換行）" />
+      <button id="sendBtn" class="btn">送出</button>
+    </footer>
+  </main>
+
+<script>
+/**
+ * ===================== 打字效果（給對方訊息用） =====================
+ * - 先讓訊息泡泡跑進場動畫，之後再逐字顯示內容
+ * - 會自動向下捲動，確保最新訊息可見
+ */
+function startTyping(msgEl, { speed = 35, delayBefore = 0 } = {}){
+  const contentEl = msgEl.querySelector('.msg__content');
+  if (!contentEl) return;
+
+  const original = contentEl.textContent;  // 原始完整文字
+  const chars = Array.from(original);      // 支援中文/表情符號的安全分割
+
+  // 清空文字，插入游標
+  contentEl.textContent = '';
+  const caret = document.createElement('span');
+  caret.className = 'cursor';
+  contentEl.appendChild(caret);
+
+  const thread = document.getElementById('thread');
+  let i = 0;
+
+  const typeOne = () => {
+    if (i >= chars.length){
+      caret.remove(); // 打完移除游標
+      return;
+    }
+    // 在游標前面插入下一個字
+    caret.insertAdjacentText('beforebegin', chars[i++]);
+    // 自動捲到底部
+    thread.scrollTop = thread.scrollHeight;
+    setTimeout(typeOne, speed);
+  };
+
+  // 取得該泡泡的動畫延遲與時間，打字要等進場動畫結束再開始
+  const computed = getComputedStyle(msgEl);
+  const totalAnimTime = (parseFloat(computed.animationDelay)||0)*1000 + (parseFloat(computed.animationDuration)||0)*1000;
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced){ setTimeout(()=>{ contentEl.textContent = original; }, totalAnimTime); return; }
+
+  const hasAnim = computed.animationName !== 'none';
+  if (hasAnim){ setTimeout(typeOne, totalAnimTime + delayBefore); }
+  else        { setTimeout(typeOne, delayBefore); }
+}
+
+// 初始化：把頁面上標上 data-typed 的訊息啟用打字
+function initTypingMessages(){
+  document.querySelectorAll('[data-typed]').forEach((msgEl) => {
+    const speed = Number(msgEl.dataset.speed || 35);
+    const addDelay = Number(msgEl.dataset.delay || 0);
+    startTyping(msgEl, { speed, delayBefore: addDelay });
+  });
+}
+
+/**
+ * 新增「立即顯示」的訊息（通常用於：我方訊息）
+ * - 不做打字效果；保留彈入動畫，但移除延遲（.no-delay）
+ */
+function appendInstantMessage(text, side = 'me'){
+  const thread = document.getElementById('thread');
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+
+  const animClass = side === 'me' ? 'animate-in--me no-delay' : 'animate-in--them';
+  const msg = document.createElement('div');
+  msg.className = `msg msg--${side} ${animClass}`;
+  msg.innerHTML = `
+    <div class="msg__content"></div>
+    <div class="msg__meta">${hh}:${mm}${side === 'me' ? ' · 已送出' : ''}</div>
+  `;
+
+  msg.querySelector('.msg__content').textContent = text; // 直接顯示
+  thread.appendChild(msg);
+  thread.scrollTop = thread.scrollHeight;
+}
+
+/**
+ * ===================== IME 送出流程 =====================
+ */
+const textbox = document.getElementById('textbox');
+const sendBtn  = document.getElementById('sendBtn');
+let isComposing = false;  // 是否在中文輸入「組字」狀態
+
+function normalizeImeDup(str){
+  const len = str.length;
+  if (len % 2 === 0){
+    const half = len / 2;
+    const a = str.slice(0, half);
+    const b = str.slice(half);
+    if (a === b) return a;
+  }
+  return str;
+}
+
+// 從輸入框讀值 →（一幀後確保 IME commit）→ 正規化 → 送出 → 清空
+function sendNowFromInput(){
+  requestAnimationFrame(() => {
+    const raw = textbox.value;
+    const val = normalizeImeDup(raw).trim();
+    if (val) appendInstantMessage(val, 'me');
+
+    // 清空並重置狀態，避免殘影
+    textbox.value = '';
+    textbox.dispatchEvent(new Event('input', { bubbles: true }));
+    isComposing = false;
+    textbox.focus();
+  });
+}
+
+// 監聽 IME 組字開始/結束
+textbox.addEventListener('compositionstart', () => { isComposing = true; });
+textbox.addEventListener('compositionend',   () => { isComposing = false; });
+
+// 點擊「送出」按鈕
+sendBtn.addEventListener('click', () => {
+  if (isComposing){
+    // 先 blur 讓 IME 收斂，下一幀再讀值送出
+    textbox.blur();
+    sendNowFromInput();
+    return;
+  }
+  sendNowFromInput();
+});
+
+// 鍵盤事件：Enter 送出、Shift+Enter 換行
+textbox.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    if (isComposing){
+      textbox.blur();
+      sendNowFromInput();
+      return;
+    }
+    sendNowFromInput();
+  }
+});
+
+// 頁面載入後，啟用所有 data-typed 的訊息（如果有預設訊息）
+window.addEventListener('load', initTypingMessages);
+</script>
+</body>
+</html>
