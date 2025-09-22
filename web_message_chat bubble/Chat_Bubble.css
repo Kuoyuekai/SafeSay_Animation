@@ -45,7 +45,7 @@
     - min-height:0 是讓 Grid 子元素正確吃到 1fr（避免被內容撐開）
   */
   .chat__thread{
-    padding:16px; display:flex; flex-direction:column; gap:10px; background:var(--chat-bg); overflow:auto; min-height:0;
+    padding:16px; display:flex; flex-direction:column; gap:10px; background:var(--chat-bg); overflow:auto; min-height:0; scroll-behavior: smooth;
   }
 
   /* 訊息泡泡 */
