@@ -1,0 +1,44 @@
+    /* ========== Add Channel Button========== */
+    .add-channel-btn {
+      position: relative;
+      display: inline-flex;
+      width: 64px;
+      height: 64px;
+      justify-content: center;
+      align-items: center;
+      border: none;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #F9935C 0%, rgba(249,147,92,0.8) 100%);
+      box-shadow: 0 0 30px 0 rgba(249,147,92,0.5);
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .2s ease;
+      outline: none;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Hover：微放大 */
+    .add-channel-btn:hover {
+      transform: scale(1.05);
+    }
+
+    /* Press：黑 5% 覆蓋層 + 陰影縮小 */
+    .add-channel-btn:active {
+      transform: scale(0.96);
+      box-shadow: 0 0 15px 0 rgba(249,147,92,0.5);
+    }
+    .add-channel-btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0);
+    }
+    .add-channel-btn:active::after {
+      background: rgba(0,0,0,0.05);
+    }
+
+    .add-channel-btn:focus-visible {
+      outline: 2px solid rgba(249,147,92,0.8);
+      outline-offset: 3px;
+      border-radius: 50%;
+    }
